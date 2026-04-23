@@ -52,7 +52,6 @@ def to_excel_unified(df, sheet_name="통합_수주업로드"):
 # ==========================================
 tab_tesco, tab_emart, tab_lotte = st.tabs(["🔴 Tesco", "🟡 이마트 (TRD/노브랜드 포함)", "🟢 롯데마트"])
 
-
 # =====================================================================
 # 🔴 [TAB 1] TESCO 로직
 # =====================================================================
@@ -212,7 +211,6 @@ with tab_tesco:
         except Exception as e:
             st.error(f"오류 발생: {e}")
 
-
 # =====================================================================
 # 🟡 [TAB 2] 이마트 (이마트 / 트레이더스 / 노브랜드) 로직
 # =====================================================================
@@ -305,13 +303,19 @@ with tab_emart:
                     merged_df['날짜'] = today_dash
                     merged_df['배송처'] = merged_df['배송코드'].astype(str).map(delivery_name_map).fillna('')
                     
-                    merged_df.rename(columns={
+                    # ⭐ [에러 수정 부분]: 기존 데이터 프레임의 중복되는 '상품명' 컬럼을 피해 필요한 컬럼만 추출 후 변경!
+                    subset_df = merged_df[[
+                        '날짜', '배송일자', '발주코드', 'Customer', '배송코드', '배송처', 
+                        '최종_상품코드', '최종_상품명', '수량', '발주원가', '발주금액'
+                    ]].copy()
+                    
+                    subset_df.rename(columns={
                         '날짜': '수주날짜', '배송일자': '납품일자', 'Customer': '발주처', 
                         '최종_상품코드': 'ME코드', '최종_상품명': '상품명', '발주원가': '단가', '발주금액': 'Total Amount'
                     }, inplace=True)
 
                     group_cols = ['수주날짜', '납품일자', '발주코드', '발주처', '배송코드', '배송처', 'ME코드', '상품명', '단가']
-                    grouped_df = merged_df.groupby(group_cols, dropna=False, as_index=False)[['수량', 'Total Amount']].sum()
+                    grouped_df = subset_df.groupby(group_cols, dropna=False, as_index=False)[['수량', 'Total Amount']].sum()
                     
                     df_final = grouped_df[FINAL_COLUMNS].copy()
                     
@@ -323,7 +327,6 @@ with tab_emart:
                                        mime="application/vnd.ms-excel", key="dl_emart")
             except Exception as e:
                 st.error(f"오류 발생: {e}")
-
 
 # =====================================================================
 # 🟢 [TAB 3] 롯데마트 로직
