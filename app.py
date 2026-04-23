@@ -12,8 +12,8 @@ from datetime import datetime, date
 # ==========================================
 st.set_page_config(page_title="멘소래담 마트 통합 수주업로드", page_icon="🏢", layout="wide")
 
+# 모든 날짜 형식을 하이픈 없이 YYYYMMDD로 통일
 today_str = datetime.today().strftime("%Y%m%d")
-today_dash = datetime.today().strftime("%Y%m%d")
 
 # ==========================================
 # 🎨 좌측 사이드바 (Sidebar) - 로고 및 안내
@@ -29,7 +29,7 @@ with st.sidebar:
     st.markdown("📌 **지원 확장자:** `.csv`, `.xls`, `.xlsx`")
     st.markdown("⚠️ **주의사항:** 서버(깃허브)에 마스터 맵핑 파일이 정상적으로 위치해야 배송처/단가가 완벽히 적용됩니다.")
     st.markdown("---")
-    st.markdown(f"📅 **시스템 기준일:** `{today_dash}`")
+    st.markdown(f"📅 **시스템 기준일:** `{today_str}`")
 
 # ==========================================
 # 📝 메인 화면 타이틀
@@ -213,7 +213,8 @@ with tab_tesco:
                 groupby_cols = ['발주코드', '배송코드', '납품처', '상품코드', '상품명', '단가', '납품일자']
                 df_grouped = df.groupby(groupby_cols, as_index=False).agg({'수량': 'sum', '금액': 'sum'})
                 
-                df_grouped['수주날짜'] = today_dash
+                df_grouped['수주날짜'] = today_str
+                # 하이픈 없이 YYYYMMDD로 통일
                 df_grouped['납품일자'] = pd.to_datetime(df_grouped['납품일자'], errors='coerce').dt.strftime('%Y%m%d')
                 df_grouped['발주처'] = 'Tesco'
                 df_grouped.rename(columns={'납품처': '배송처', '상품코드': 'ME코드', '금액': 'Total Amount'}, inplace=True)
@@ -295,7 +296,9 @@ with tab_emart:
                     raw_df['점포코드'] = pd.to_numeric(raw_df['점포코드'], errors='coerce').fillna(0).astype(int)
                     raw_df['센터코드'] = raw_df.get('센터코드', '').astype(str).str.replace('.0', '', regex=False).str.strip()
                     raw_df['수량'] = pd.to_numeric(raw_df.get('수량', 0), errors='coerce').fillna(0)
-                    raw_df['배송일자'] = raw_df.get('점입점일자', '').astype(str).str.replace('.0', '', regex=False).str.strip()
+                    
+                    # 배송일자 문자열 처리 후 하이픈 완전 제거
+                    raw_df['배송일자'] = raw_df.get('점입점일자', '').astype(str).str.replace('.0', '', regex=False).str.replace('-', '', regex=False).str.strip()
                     raw_df = raw_df[raw_df['수량'] > 0].copy() 
 
                     emart_map_dict = {
@@ -328,7 +331,7 @@ with tab_emart:
                     }
 
                     merged_df['발주코드'] = '81010000'
-                    merged_df['날짜'] = today_dash
+                    merged_df['날짜'] = today_str
                     merged_df['배송처'] = merged_df['배송코드'].astype(str).map(delivery_name_map).fillna('')
                     
                     subset_df = merged_df[[
@@ -402,7 +405,9 @@ with tab_lotte:
                         curr_doc_no = clean_lotte_code(r[1])
                         name = str(r[5]).strip()
                         curr_center = re.sub(r'상온센타|상온센터|센타', '센터', name).replace('센터센터', '센터')
-                        curr_delivery_date = re.sub(r'[^0-9-]', '', r[7] if len(r) > 7 else "") 
+                        
+                        # 오직 숫자만 추출 (하이픈 무조건 제거)
+                        curr_delivery_date = re.sub(r'[^0-9]', '', str(r[7]) if len(r) > 7 else "") 
                         continue
                     
                     barcode = clean_lotte_code(r[1])
@@ -458,7 +463,7 @@ with tab_lotte:
                     df_grouped['배송코드'] = df_grouped['발주코드']
                     df_grouped['Total Amount'] = df_grouped['UNIT수량'] * df_grouped['UNIT단가']
                     
-                    df_grouped['수주날짜'] = today_dash
+                    df_grouped['수주날짜'] = today_str
                     df_grouped['발주처'] = '롯데마트'
                     df_grouped.rename(columns={
                         '센터': '배송처', '품명': '상품명', 'UNIT수량': '수량', 'UNIT단가': '단가'
