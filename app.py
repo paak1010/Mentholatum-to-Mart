@@ -227,8 +227,9 @@ with tab_tesco:
                 c2.metric("🔢 총 납품 수량", f"{df_final['수량'].sum():,.0f} 개")
                 c3.metric("💰 총 납품 금액", f"{df_final['Total Amount'].sum():,.0f} 원")
 
-                with st.expander("👀 변환된 상세 데이터 미리보기", expanded=True):
-                    st.dataframe(df_final, use_container_width=True)
+                with st.expander("👀 변환된 상세 데이터 미리보기 (약 20~30줄 표시)", expanded=True):
+                    # 표 높이를 1000px로 늘려서 더 많은 행이 한눈에 들어오게 처리!
+                    st.dataframe(df_final, use_container_width=True, height=1000)
                 
                 st.download_button(
                     label="📥 통일 양식 다운로드 (Tesco)", 
@@ -355,8 +356,9 @@ with tab_emart:
                     c2.metric("🔢 총 납품 수량", f"{df_final['수량'].sum():,.0f} 개")
                     c3.metric("💰 총 납품 금액", f"{df_final['Total Amount'].sum():,.0f} 원")
 
-                    with st.expander("👀 변환된 상세 데이터 미리보기", expanded=True):
-                        st.dataframe(df_final, use_container_width=True)
+                    with st.expander("👀 변환된 상세 데이터 미리보기 (약 20~30줄 표시)", expanded=True):
+                        # 표 높이를 1000px로 늘려서 더 많은 행이 한눈에 들어오게 처리!
+                        st.dataframe(df_final, use_container_width=True, height=1000)
                         
                     st.download_button(
                         label="📥 통일 양식 다운로드 (이마트)", 
@@ -478,8 +480,9 @@ with tab_lotte:
                     c2.metric("🔢 총 납품 수량", f"{df_final['수량'].sum():,.0f} 개")
                     c3.metric("💰 총 납품 금액", f"{df_final['Total Amount'].sum():,.0f} 원")
 
-                    with st.expander("👀 변환된 상세 데이터 미리보기", expanded=True):
-                        st.dataframe(df_final, use_container_width=True)
+                    with st.expander("👀 변환된 상세 데이터 미리보기 (약 20~30줄 표시)", expanded=True):
+                        # 표 높이를 1000px로 늘려서 더 많은 행이 한눈에 들어오게 처리!
+                        st.dataframe(df_final, use_container_width=True, height=1000)
                         
                     st.download_button(
                         label="📥 통일 양식 다운로드 (롯데마트)", 
