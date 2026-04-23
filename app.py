@@ -10,7 +10,7 @@ from datetime import datetime, date
 # ==========================================
 # ⚙️ 페이지 및 기본 설정 (Wide Layout)
 # ==========================================
-st.set_page_config(page_title="통합 수주 자동화 대시보드", page_icon="📦", layout="wide")
+st.set_page_config(page_title="멘소래담 마트 통합 수주업로드", page_icon="🏢", layout="wide")
 
 today_str = datetime.today().strftime("%Y%m%d")
 today_dash = datetime.today().strftime("%Y-%m-%d")
