@@ -13,7 +13,7 @@ from datetime import datetime, date
 st.set_page_config(page_title="멘소래담 마트 통합 수주업로드", page_icon="🏢", layout="wide")
 
 today_str = datetime.today().strftime("%Y%m%d")
-today_dash = datetime.today().strftime("%Y-%m-%d")
+today_dash = datetime.today().strftime("%Y%m%d")
 
 # ==========================================
 # 🎨 좌측 사이드바 (Sidebar) - 로고 및 안내
@@ -214,7 +214,7 @@ with tab_tesco:
                 df_grouped = df.groupby(groupby_cols, as_index=False).agg({'수량': 'sum', '금액': 'sum'})
                 
                 df_grouped['수주날짜'] = today_dash
-                df_grouped['납품일자'] = pd.to_datetime(df_grouped['납품일자'], errors='coerce').dt.strftime('%Y-%m-%d')
+                df_grouped['납품일자'] = pd.to_datetime(df_grouped['납품일자'], errors='coerce').dt.strftime('%Y%m%d')
                 df_grouped['발주처'] = 'Tesco'
                 df_grouped.rename(columns={'납품처': '배송처', '상품코드': 'ME코드', '금액': 'Total Amount'}, inplace=True)
                 df_final = df_grouped[FINAL_COLUMNS].copy()
