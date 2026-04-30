@@ -38,9 +38,9 @@ st.title("📦 통합 마트 수주 자동 변환 대시보드")
 st.markdown("> **Tesco, 이마트 계열(TRD/노브랜드), 롯데마트**의 수주 데이터를 하나의 표준 양식으로 자동 병합·변환합니다.")
 st.markdown("<br>", unsafe_allow_html=True)
 
-# ⭐ 최종 통일 양식 컬럼 리스트
+# ⭐ 최종 통일 양식 컬럼 리스트 (구분 열 추가)
 FINAL_COLUMNS = [
-    '수주날짜', '납품일자', '발주코드', '발주처', '배송코드', '배송처', 
+    '구분', '수주날짜', '납품일자', '발주코드', '발주처', '배송코드', '배송처', 
     'ME코드', '상품명', '수량', '단가', 'Total Amount'
 ]
 
@@ -63,7 +63,7 @@ def to_excel_unified(df, sheet_name="통합_수주업로드"):
         for col_idx, col_name in enumerate(df.columns):
             if col_name in ['수량', '단가', 'Total Amount']:
                 worksheet.set_column(col_idx, col_idx, 12, num_format)
-            elif col_name in ['수주날짜', '납품일자', '발주코드', '배송코드']:
+            elif col_name in ['구분', '수주날짜', '납품일자', '발주코드', '배송코드']:
                 worksheet.set_column(col_idx, col_idx, 14, center_format)
             elif col_name in ['상품명', '배송처']:
                 worksheet.set_column(col_idx, col_idx, 30)
@@ -213,6 +213,7 @@ with tab_tesco:
                 groupby_cols = ['발주코드', '배송코드', '납품처', '상품코드', '상품명', '단가', '납품일자']
                 df_grouped = df.groupby(groupby_cols, as_index=False).agg({'수량': 'sum', '금액': 'sum'})
                 
+                df_grouped['구분'] = "0" # 구분 열 0 추가
                 df_grouped['수주날짜'] = today_str
                 # 하이픈 없이 YYYYMMDD로 통일
                 df_grouped['납품일자'] = pd.to_datetime(df_grouped['납품일자'], errors='coerce').dt.strftime('%Y%m%d')
@@ -309,7 +310,7 @@ with tab_emart:
                     }
 
                     def process_emart(row):
-                        code, center = row['점포코드'], row['센터코드']
+                        code, center = row['점포코드']
                         if (1000 <= code <= 1999) or code >= 9000: cust = 'E-mart'
                         elif 2000 <= code <= 2999: cust = 'E-mart(TRD)'
                         elif 3000 <= code <= 3999: cust = 'E-mart(노브랜드)'
@@ -347,7 +348,12 @@ with tab_emart:
 
                     group_cols = ['수주날짜', '납품일자', '발주코드', '발주처', '배송코드', '배송처', 'ME코드', '상품명', '단가']
                     grouped_df = subset_df.groupby(group_cols, dropna=False, as_index=False)[['수량', 'Total Amount']].sum()
+                    
+                    grouped_df['구분'] = "0" # 구분 열 0 추가
                     df_final = grouped_df[FINAL_COLUMNS].copy()
+                    
+                    # 발주처 기준으로 정렬 (이마트, TRD, 노브랜드 그룹화)
+                    df_final = df_final.sort_values(by=['발주처', '배송처', '상품명']).reset_index(drop=True)
                     
                     # --- UI 요약 섹션 ---
                     st.success("✨ 이마트 데이터 정제 및 병합이 완료되었습니다!")
@@ -465,6 +471,7 @@ with tab_lotte:
                     df_grouped['배송코드'] = df_grouped['발주코드']
                     df_grouped['Total Amount'] = df_grouped['UNIT수량'] * df_grouped['UNIT단가']
                     
+                    df_grouped['구분'] = "0" # 구분 열 0 추가
                     df_grouped['수주날짜'] = today_str
                     df_grouped['발주처'] = '롯데마트'
                     df_grouped.rename(columns={
