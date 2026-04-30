@@ -283,7 +283,12 @@ with tab_emart:
             try:
                 with st.spinner("🔄 이마트 데이터 통합 변환 중입니다..."):
                     if file_emart.name.endswith('.csv'):
-                        raw_df = pd.read_csv(file_emart)
+                        # CSV 파일 읽을 때 인코딩 처리 (한글 깨짐 및 에러 방지)
+                        try:
+                            raw_df = pd.read_csv(file_emart, encoding='utf-8-sig')
+                        except:
+                            file_emart.seek(0)
+                            raw_df = pd.read_csv(file_emart, encoding='cp949')
                     else:
                         xls_raw = pd.ExcelFile(file_emart)
                         t_sheet = xls_raw.sheet_names[0]
@@ -309,8 +314,10 @@ with tab_emart:
                         'E-mart(노브랜드)': {'9102': '89011175', '9130': '81010904', '9120': '81010968', '9110': '81010969'}
                     }
 
+                    # ✨ 에러 수정 부분 ✨
                     def process_emart(row):
-                        code, center = row['점포코드']
+                        code = row['점포코드']
+                        center = str(row['센터코드']) # 딕셔너리 조회를 위해 문자열 처리
                         if (1000 <= code <= 1999) or code >= 9000: cust = 'E-mart'
                         elif 2000 <= code <= 2999: cust = 'E-mart(TRD)'
                         elif 3000 <= code <= 3999: cust = 'E-mart(노브랜드)'
