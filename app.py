@@ -304,8 +304,10 @@ with tab_emart:
                     raw_df['센터코드'] = raw_df.get('센터코드', '').astype(str).str.replace('.0', '', regex=False).str.strip()
                     raw_df['수량'] = pd.to_numeric(raw_df.get('수량', 0), errors='coerce').fillna(0)
                     
-                    # 배송일자 문자열 처리 후 하이픈 완전 제거
-                    raw_df['배송일자'] = raw_df.get('점입점일자', '').astype(str).str.replace('.0', '', regex=False).str.replace('-', '', regex=False).str.strip()
+                    # ✨ 센터입하일자(또는 센터입하일)를 먼저 찾고 없으면 점입점일자를 가져옴
+                    date_col = '센터입하일자' if '센터입하일자' in raw_df.columns else ('센터입하일' if '센터입하일' in raw_df.columns else '점입점일자')
+                    raw_df['배송일자'] = raw_df.get(date_col, '').astype(str).str.replace('.0', '', regex=False).str.replace('-', '', regex=False).str.strip()
+                    
                     raw_df = raw_df[raw_df['수량'] > 0].copy() 
 
                     emart_map_dict = {
@@ -314,7 +316,6 @@ with tab_emart:
                         'E-mart(노브랜드)': {'9102': '89011175', '9130': '81010904', '9120': '81010968', '9110': '81010969'}
                     }
 
-                    # ✨ 에러 수정 부분 ✨
                     def process_emart(row):
                         code = row['점포코드']
                         center = str(row['센터코드']) # 딕셔너리 조회를 위해 문자열 처리
