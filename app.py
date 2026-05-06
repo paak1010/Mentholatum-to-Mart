@@ -46,6 +46,13 @@ FINAL_COLUMNS = [
 
 def to_excel_unified(df, sheet_name="통합_수주업로드"):
     """데이터프레임을 엑셀 파일(메모리)로 변환하고 숫자 서식을 지정합니다."""
+    
+    # ⭐ [수정된 부분] 엑셀로 쓰기 전에 수량, 단가, Total Amount를 강제 숫자형으로 변환
+    numeric_cols = ['수량', '단가', 'Total Amount']
+    for col in numeric_cols:
+        if col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
+
     output = io.BytesIO()
     with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
         df.to_excel(writer, index=False, sheet_name=sheet_name)
