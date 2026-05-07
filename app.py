@@ -230,30 +230,65 @@ def run_emart_logic(uploaded_file, prod_df):
 # ==========================================
 def run_lotte_logic(uploaded_file):
     CENTER_MAP = {'오산센터': '81030907', '김해센터': '81030908'}
-    if uploaded_file.name.endswith('.csv'): df_edi = pd.read_csv(uploaded_file, header=None)
-    else: df_edi = pd.read_excel(uploaded_file, header=None)
+    
+    # ⭐ [추가] 텍스트에서 순수 숫자만 안전하게 추출하는 헬퍼 함수
+    def extract_num(val):
+        s = str(val).split('(')[0] # '1 (BOX)'의 경우 '(' 앞부분인 '1 '만 남김
+        s = re.sub(r'[^\d.]', '', s) # 쉼표 등 숫자와 소수점을 제외한 모든 문자 제거
+        try:
+            return float(s) if s else 0.0
+        except:
+            return 0.0
+
+    # 파일 읽기 (인코딩 안전성 강화)
+    if uploaded_file.name.endswith('.csv'): 
+        try:
+            df_edi = pd.read_csv(uploaded_file, header=None, encoding='utf-8-sig')
+        except:
+            uploaded_file.seek(0)
+            df_edi = pd.read_csv(uploaded_file, header=None, encoding='cp949')
+    else: 
+        df_edi = pd.read_excel(uploaded_file, header=None)
 
     parsed_list, curr_center, curr_doc_no, curr_date = [], "", "", ""
+    
     for _, row in df_edi.dropna(how='all').iterrows():
         r = [str(x).strip() for x in row.tolist()]
+        
+        # 헤더(ORDERS) 영역 정보 추출
         if r[0] == 'ORDERS':
             curr_doc_no = r[1].replace('.0', '')
             curr_center = re.sub(r'상온센타|상온센터|센타', '센터', r[5]).replace('센터센터', '센터')
             curr_date = re.sub(r'[^0-9]', '', r[7])
             continue
+            
+        # 상품 영역 정보 추출 (판매코드 열이 880으로 시작하는 경우)
         if len(r) > 1 and r[1].startswith('880'):
-            qty = int(float(r[6])) * (int(float(r[5])) or 1)
+            # r[5] = 입수(예: 6), r[6] = 주문수(예: '1 (BOX)'), r[7] = 단가(예: '9,000')
+            ipsu = int(extract_num(r[5])) or 1
+            box_qty = int(extract_num(r[6]))
+            qty = box_qty * ipsu
+            price = extract_num(r[7])
+            
             parsed_list.append({
-                '발주코드': curr_doc_no, '배송처': curr_center, '납품일자': curr_date,
-                'ME코드': r[1].replace('.0', ''), '상품명': r[2], '수량': qty, '단가': float(r[7]), 'Total Amount': qty * float(r[7])
+                '발주코드': curr_doc_no, 
+                '배송처': curr_center, 
+                '납품일자': curr_date,
+                'ME코드': r[1].replace('.0', ''), 
+                '상품명': r[2], 
+                '수량': qty, 
+                '단가': price, 
+                'Total Amount': qty * price
             })
     
     df = pd.DataFrame(parsed_list)
     if df.empty: return df
+    
     df['배송코드'] = df['배송처'].map(lambda x: next((v for k, v in CENTER_MAP.items() if k in x), '81030000'))
     df['수주날짜'] = today_str
     df['발주처'] = '롯데마트'
     df['구분'] = "0"
+    
     return df[FINAL_COLUMNS]
 
 # ==========================================
