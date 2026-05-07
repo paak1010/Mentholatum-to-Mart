@@ -59,6 +59,7 @@ def to_excel_unified(df, sheet_name="통합_수주업로드"):
 # 🔴 [로직 1] TESCO 처리 함수
 # ==========================================
 def run_tesco_logic(uploaded_file):
+    # (Tesco 매핑 데이터는 기존과 동일하게 유지)
     FULL_PRODUCT_MAP = {
         8809020342310: 'ME90521CLA', 8809020342211: 'ME90521CLL', 8809020342419: 'ME90521CLS',
         8809020340804: 'ME90521MC1', 8809020340774: 'ME90521LP2', 8809020348992: 'ME90521E18',
@@ -107,7 +108,6 @@ def run_tesco_logic(uploaded_file):
     }
     NORMALIZED_STORE_MAP = {re.sub(r'^\d+', '', k).replace(" ", "").upper(): v for k, v in RAW_STORE_MAP.items()}
 
-    # 파일 읽기
     if uploaded_file.name.endswith('.csv'):
         content = uploaded_file.getvalue()
         try: text = content.decode('utf-8-sig')
@@ -284,7 +284,6 @@ with st.sidebar:
                 appended.append(d)
         if not appended: return None
         df_m = pd.concat(appended, ignore_index=True)
-        # 에러 방지용 컬럼 체크
         target_col = '바코드' if '바코드' in df_m.columns else ('상품코드' if '상품코드' in df_m.columns else None)
         if target_col:
             df_m['바코드'] = df_m[target_col].astype(str).str.replace('.0', '', regex=False).str.strip()
@@ -310,7 +309,6 @@ if uploaded_files:
     
     with st.spinner("🔄 파일을 분석하여 분류 중입니다..."):
         for f in uploaded_files:
-            # 마트 판별을 위한 샘플 추출
             try:
                 if f.name.endswith('.csv'):
                     sample_content = f.getvalue()[:2000].decode('utf-8-sig', errors='ignore')
@@ -319,7 +317,6 @@ if uploaded_files:
                     sample_content = str(sample_df.columns.tolist()) + str(sample_df.values.tolist())
                 f.seek(0)
                 
-                # 판별 로직
                 if 'ORDERS' in sample_content:
                     df_res = run_lotte_logic(f)
                     mart_name = "롯데마트"
@@ -333,27 +330,38 @@ if uploaded_files:
                 if not df_res.empty:
                     all_results.append(df_res)
                     st.write(f"✔️ **{f.name}** -> {mart_name} 인식 완료 ({len(df_res)}건)")
-                else:
-                    st.error(f"❌ **{f.name}**에서 데이터를 추출하지 못했습니다.")
             except Exception as e:
                 st.error(f"❌ **{f.name}** 처리 중 오류 발생: {e}")
 
     if all_results:
-        final_df = pd.concat(all_results, ignore_index=True)
+        # 1. 모든 파일의 결과 하나로 합치기
+        combined_df = pd.concat(all_results, ignore_index=True)
+
+        # ⭐ 2. [추가된 핵심 로직] 데이터 병합 (Aggregation)
+        # 요청하신 대로 '납품일자', '발주코드', '발주처', '배송코드', '배송처', 'ME코드' 등이 동일하면 수량을 합칩니다.
+        # 합계에 포함되지 않는 컬럼들(구분, 수주날짜, 상품명, 단가)도 그룹화 기준에 넣어 정보가 유실되지 않게 합니다.
+        group_cols = ['구분', '수주날짜', '납품일자', '발주코드', '발주처', '배송코드', '배송처', 'ME코드', '상품명', '단가']
+        final_df = combined_df.groupby(group_cols, as_index=False).agg({
+            '수량': 'sum',
+            'Total Amount': 'sum'
+        })
+        
+        # 컬럼 순서 재정렬 (그룹화 과정에서 순서가 바뀔 수 있으므로)
+        final_df = final_df[FINAL_COLUMNS]
+
         st.divider()
         
         # 요약 지표
         c1, c2, c3 = st.columns(3)
-        c1.metric("📦 총 처리 건수", f"{len(final_df):,} 건")
+        c1.metric("📦 총 병합 건수", f"{len(final_df):,} 건")
         c2.metric("🔢 총 납품 수량", f"{final_df['수량'].sum():,.0f} 개")
         c3.metric("💰 총 납품 금액", f"{final_df['Total Amount'].sum():,.0f} 원")
 
-        with st.expander("👀 통합 변환 결과 미리보기", expanded=True):
+        with st.expander("👀 통합 병합 결과 미리보기", expanded=True):
             st.dataframe(final_df, use_container_width=True, height=500)
         
-        # 통합 다운로드 버튼
         st.download_button(
-            label="📥 통합 양식 엑셀 다운로드 (전체 합본)",
+            label="📥 통합 병합본 엑셀 다운로드 (중복 수량 합산 완료)",
             data=to_excel_unified(final_df),
             file_name=f"마트통합수주_업로드용_{today_str}.xlsx",
             mime="application/vnd.ms-excel",
