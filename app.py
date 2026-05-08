@@ -12,10 +12,8 @@ from datetime import datetime
 # ==========================================
 st.set_page_config(page_title="멘소래담 마트 통합 수주 자동화", page_icon="🏢", layout="wide")
 
-# 모든 날짜 형식을 YYYYMMDD로 통일
 today_str = datetime.today().strftime("%Y%m%d")
 
-# 최종 통일 양식 컬럼 리스트
 FINAL_COLUMNS = [
     '구분', '수주날짜', '납품일자', '발주코드', '발주처', '배송코드', '배송처', 
     'ME코드', '상품명', '수량', '단가', 'Total Amount'
@@ -25,7 +23,6 @@ FINAL_COLUMNS = [
 # 🛠️ 공통 유틸리티 함수
 # ==========================================
 def to_excel_unified(df, sheet_name="통합_수주업로드"):
-    """데이터프레임을 엑셀 파일로 변환 (숫자 서식 및 스타일 적용)"""
     numeric_cols = ['수량', '단가', 'Total Amount']
     for col in numeric_cols:
         if col in df.columns:
@@ -59,7 +56,6 @@ def to_excel_unified(df, sheet_name="통합_수주업로드"):
 # 🔴 [로직 1] TESCO 처리 함수
 # ==========================================
 def run_tesco_logic(uploaded_file):
-    # (Tesco 매핑 데이터는 기존과 동일하게 유지)
     FULL_PRODUCT_MAP = {
         8809020342310: 'ME90521CLA', 8809020342211: 'ME90521CLL', 8809020342419: 'ME90521CLS',
         8809020340804: 'ME90521MC1', 8809020340774: 'ME90521LP2', 8809020348992: 'ME90521E18',
@@ -198,10 +194,21 @@ def run_emart_logic(uploaded_file, prod_df):
         'E-mart(노브랜드)': {'9102': '89011175', '9130': '81010904', '9120': '81010968', '9110': '81010969'}
     }
     
+    # ⭐ 누락되었던 전체 이마트 배송처 맵핑 완벽 복구
     delivery_name_map = {
-        '81010902': '이마트 시화물류센터', '81010905': '이마트 여주물류센터', '81010903': '이마트 대구물류센터',
-        '81033036': '이마트 트레이더스 평택물류', '89011174': '이마트 트레이더스 대구물류', '81011012': '이마트 트레이더스 여주물류',
-        '81010904': '이마트 노브랜드 여주2물류센터', '81010968': '이마트 노브랜드 여주물류센터', '81010969': '이마트 노브랜드 시화물류센터'
+        '81010901': '이마트 백암물류센터', 
+        '81010902': '이마트 시화물류센터', 
+        '81010903': '이마트 대구물류센터',
+        '81010905': '이마트 여주물류센터', 
+        '81010906': '이마트 광주물류센터',
+        '81010904': '이마트 노브랜드 여주2물류센터', 
+        '81010968': '이마트 노브랜드 여주물류센터',
+        '81010969': '이마트 노브랜드 시화물류센터', 
+        '89011175': '이마트 노브랜드 대구물류(신규)',
+        '81033036': '이마트 트레이더스 평택물류', 
+        '89011174': '이마트 트레이더스 대구물류', 
+        '81011012': '이마트 트레이더스 여주물류',
+        '81011010': '이마트 트레이더스 시화물류'
     }
 
     def process_row(row):
@@ -217,7 +224,10 @@ def run_emart_logic(uploaded_file, prod_df):
     merged['ME코드'] = merged['상품코드(기획)'].fillna(merged['상품코드'])
     name_col = '상품명(기획)' if '상품명(기획)' in prod_df.columns else '상품명'
     merged['상품명'] = merged[name_col].fillna(merged.get('상품명', ''))
+    
+    # 맵핑을 통해 배송처 이름 할당 (실패하면 배송코드 그대로 노출)
     merged['배송처'] = merged['배송코드'].map(delivery_name_map).fillna(merged['배송코드'])
+    
     merged['수주날짜'] = today_str
     merged['발주코드'] = '81010000'
     merged['구분'] = "0"
@@ -231,20 +241,15 @@ def run_emart_logic(uploaded_file, prod_df):
 def run_lotte_logic(uploaded_file):
     CENTER_MAP = {'오산센터': '81030907', '김해센터': '81030908'}
     
-    # ⭐ [추가] 텍스트에서 순수 숫자만 안전하게 추출하는 헬퍼 함수
     def extract_num(val):
-        s = str(val).split('(')[0] # '1 (BOX)'의 경우 '(' 앞부분인 '1 '만 남김
-        s = re.sub(r'[^\d.]', '', s) # 쉼표 등 숫자와 소수점을 제외한 모든 문자 제거
-        try:
-            return float(s) if s else 0.0
-        except:
-            return 0.0
+        s = str(val).split('(')[0]
+        s = re.sub(r'[^\d.]', '', s)
+        try: return float(s) if s else 0.0
+        except: return 0.0
 
-    # 파일 읽기 (인코딩 안전성 강화)
     if uploaded_file.name.endswith('.csv'): 
-        try:
-            df_edi = pd.read_csv(uploaded_file, header=None, encoding='utf-8-sig')
-        except:
+        try: df_edi = pd.read_csv(uploaded_file, header=None, encoding='utf-8-sig')
+        except: 
             uploaded_file.seek(0)
             df_edi = pd.read_csv(uploaded_file, header=None, encoding='cp949')
     else: 
@@ -255,16 +260,13 @@ def run_lotte_logic(uploaded_file):
     for _, row in df_edi.dropna(how='all').iterrows():
         r = [str(x).strip() for x in row.tolist()]
         
-        # 헤더(ORDERS) 영역 정보 추출
         if r[0] == 'ORDERS':
             curr_doc_no = r[1].replace('.0', '')
             curr_center = re.sub(r'상온센타|상온센터|센타', '센터', r[5]).replace('센터센터', '센터')
             curr_date = re.sub(r'[^0-9]', '', r[7])
             continue
             
-        # 상품 영역 정보 추출 (판매코드 열이 880으로 시작하는 경우)
         if len(r) > 1 and r[1].startswith('880'):
-            # r[5] = 입수(예: 6), r[6] = 주문수(예: '1 (BOX)'), r[7] = 단가(예: '9,000')
             ipsu = int(extract_num(r[5])) or 1
             box_qty = int(extract_num(r[6]))
             qty = box_qty * ipsu
@@ -369,24 +371,24 @@ if uploaded_files:
                 st.error(f"❌ **{f.name}** 처리 중 오류 발생: {e}")
 
     if all_results:
-        # 1. 모든 파일의 결과 하나로 합치기
         combined_df = pd.concat(all_results, ignore_index=True)
 
-        # ⭐ 2. [추가된 핵심 로직] 데이터 병합 (Aggregation)
-        # 요청하신 대로 '납품일자', '발주코드', '발주처', '배송코드', '배송처', 'ME코드' 등이 동일하면 수량을 합칩니다.
-        # 합계에 포함되지 않는 컬럼들(구분, 수주날짜, 상품명, 단가)도 그룹화 기준에 넣어 정보가 유실되지 않게 합니다.
+        # ⭐ 빈칸(NaN)을 공백 문자로 채워서 groupby 때 데이터가 통째로 사라지는 현상 방지
+        combined_df = combined_df.fillna("")
+
+        # 데이터 병합 (동일 항목 수량/금액 합산)
         group_cols = ['구분', '수주날짜', '납품일자', '발주코드', '발주처', '배송코드', '배송처', 'ME코드', '상품명', '단가']
-        final_df = combined_df.groupby(group_cols, as_index=False).agg({
+        
+        # dropna=False 를 주어 결측치가 있어도 그룹화 과정에서 행이 유실되지 않게 완벽 방어!
+        final_df = combined_df.groupby(group_cols, dropna=False, as_index=False).agg({
             '수량': 'sum',
             'Total Amount': 'sum'
         })
         
-        # 컬럼 순서 재정렬 (그룹화 과정에서 순서가 바뀔 수 있으므로)
         final_df = final_df[FINAL_COLUMNS]
 
         st.divider()
         
-        # 요약 지표
         c1, c2, c3 = st.columns(3)
         c1.metric("📦 총 병합 건수", f"{len(final_df):,} 건")
         c2.metric("🔢 총 납품 수량", f"{final_df['수량'].sum():,.0f} 개")
