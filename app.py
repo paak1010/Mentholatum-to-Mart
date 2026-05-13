@@ -19,7 +19,6 @@ today_str = datetime.today().strftime("%Y%m%d")
 # 🎨 좌측 사이드바 (Sidebar) - 로고 및 안내
 # ==========================================
 with st.sidebar:
-    # 요청하신 로고 이미지 삽입
     st.image("https://static.wikia.nocookie.net/mycompanies/images/d/de/Fe328a0f-a347-42a0-bd70-254853f35374.jpg/revision/latest?cb=20191117172510", use_container_width=True)
     
     st.markdown("<br>", unsafe_allow_html=True)
@@ -46,8 +45,6 @@ FINAL_COLUMNS = [
 
 def to_excel_unified(df, sheet_name="통합_수주업로드"):
     """데이터프레임을 엑셀 파일(메모리)로 변환하고 숫자 서식을 지정합니다."""
-    
-    # ⭐ [수정된 부분] 엑셀로 쓰기 전에 수량, 단가, Total Amount를 강제 숫자형으로 변환
     numeric_cols = ['수량', '단가', 'Total Amount']
     for col in numeric_cols:
         if col in df.columns:
@@ -63,7 +60,6 @@ def to_excel_unified(df, sheet_name="통합_수주업로드"):
         center_format = workbook.add_format({'align': 'center'})
         header_format = workbook.add_format({'bold': True, 'bg_color': '#F0F2F6', 'border': 1, 'align': 'center'})
         
-        # 헤더 스타일 적용
         for col_num, value in enumerate(df.columns.values):
             worksheet.write(0, col_num, value, header_format)
             
@@ -220,15 +216,13 @@ with tab_tesco:
                 groupby_cols = ['발주코드', '배송코드', '납품처', '상품코드', '상품명', '단가', '납품일자']
                 df_grouped = df.groupby(groupby_cols, as_index=False).agg({'수량': 'sum', '금액': 'sum'})
                 
-                df_grouped['구분'] = "0" # 구분 열 0 추가
+                df_grouped['구분'] = "0"
                 df_grouped['수주날짜'] = today_str
-                # 하이픈 없이 YYYYMMDD로 통일
                 df_grouped['납품일자'] = pd.to_datetime(df_grouped['납품일자'], errors='coerce').dt.strftime('%Y%m%d')
                 df_grouped['발주처'] = 'Tesco'
                 df_grouped.rename(columns={'납품처': '배송처', '상품코드': 'ME코드', '금액': 'Total Amount'}, inplace=True)
                 df_final = df_grouped[FINAL_COLUMNS].copy()
                 
-                # --- UI 요약 섹션 ---
                 st.success("✨ Tesco 데이터 정제 및 병합이 완료되었습니다!")
                 c1, c2, c3 = st.columns(3)
                 c1.metric("📦 총 처리 건수", f"{len(df_final):,} 건")
@@ -236,7 +230,6 @@ with tab_tesco:
                 c3.metric("💰 총 납품 금액", f"{df_final['Total Amount'].sum():,.0f} 원")
 
                 with st.expander("👀 변환된 상세 데이터 미리보기 (약 20~30줄 표시)", expanded=True):
-                    # 표 높이를 1000px로 늘려서 더 많은 행이 한눈에 들어오게 처리!
                     st.dataframe(df_final, use_container_width=True, height=1000)
                 
                 st.download_button(
@@ -315,7 +308,6 @@ with tab_emart:
                     
                     raw_df = raw_df[raw_df['수량'] > 0].copy() 
 
-                    # 1. 센터코드 -> 배송코드 매핑 딕셔너리
                     emart_map_dict = {
                         'E-mart': {'9110': '81010902', '9120': '81010905', '9100': '81010903'},
                         'E-mart(TRD)': {'9150': '81033036', '9102': '89011174', '9120': '81011012'},
@@ -330,7 +322,6 @@ with tab_emart:
                         elif 3000 <= code <= 3999: cust = 'E-mart(노브랜드)'
                         else: cust = 'Unknown'
                         
-                        # 매핑된 코드가 없을 경우 원본 센터코드를 반환하여 추적이 가능하게 함
                         mapped_code = emart_map_dict.get(cust, {}).get(center, center)
                         return pd.Series([cust, mapped_code])
 
@@ -342,22 +333,16 @@ with tab_emart:
                     merged_df['최종_상품코드'] = merged_df['상품코드(기획)'].fillna(merged_df['상품코드'])
                     merged_df['최종_상품명'] = merged_df[name_col].fillna(merged_df.get('상품명', ''))
 
-                    # 2. ⭐ 핵심 수정 부분: 누락된 TRD 및 센터 명칭 대거 보강
                     delivery_name_map = {
-                        # 일반 이마트
                         '81010901': '이마트 백암물류센터', 
                         '81010902': '이마트 시화물류센터', 
                         '81010903': '이마트 대구물류센터',
                         '81010905': '이마트 여주물류센터', 
                         '81010906': '이마트 광주물류센터',
-                        
-                        # 노브랜드
                         '81010904': '이마트 노브랜드 여주2물류센터', 
                         '81010968': '이마트 노브랜드 여주물류센터',
                         '81010969': '이마트 노브랜드 시화물류센터', 
                         '89011175': '이마트 노브랜드 대구물류(신규)',
-                        
-                        # 트레이더스 (TRD) - 질문하신 부분 수정
                         '81033036': '이마트 트레이더스 평택물류',
                         '89011174': '이마트 트레이더스 대구물류', 
                         '81011012': '이마트 트레이더스 여주물류',
@@ -367,7 +352,6 @@ with tab_emart:
                     merged_df['발주코드'] = '81010000'
                     merged_df['날짜'] = today_str
                     
-                    # 매핑 테이블에 이름이 없으면 배송코드를 그대로 노출하여 디버깅 용이하게 변경
                     merged_df['배송처'] = merged_df['배송코드'].astype(str).map(delivery_name_map).fillna(merged_df['배송코드'])
                     
                     subset_df = merged_df[[
@@ -388,7 +372,6 @@ with tab_emart:
                     
                     df_final = df_final.sort_values(by=['발주처', '배송처', '상품명']).reset_index(drop=True)
                     
-                    # --- UI 요약 섹션 ---
                     st.success("✨ 이마트 데이터 정제 및 병합이 완료되었습니다!")
                     c1, c2, c3 = st.columns(3)
                     c1.metric("📦 총 처리 건수", f"{len(df_final):,} 건")
@@ -446,7 +429,6 @@ with tab_lotte:
                         name = str(r[5]).strip()
                         curr_center = re.sub(r'상온센타|상온센터|센타', '센터', name).replace('센터센터', '센터')
                         
-                        # 오직 숫자만 추출 (하이픈 무조건 제거)
                         curr_delivery_date = re.sub(r'[^0-9]', '', str(r[7]) if len(r) > 7 else "") 
                         continue
                     
@@ -498,12 +480,16 @@ with tab_lotte:
                         df_final['품명'] = df_final['EDI_품명']
                         df_final['UNIT단가'] = df_final['EDI_단가']
 
+                    # ⭐ 요청하신 롯데마트 특정 바코드 수동 맵핑 추가 ⭐
+                    LOTTE_MANUAL_MAP = {'8809020342075': 'ME90621GKK'}
+                    df_final['ME코드'] = df_final['바코드'].astype(str).map(LOTTE_MANUAL_MAP).fillna(df_final['ME코드'])
+
                     df_grouped = df_final.groupby(['발주번호', '센터', '납품일자', 'ME코드'], as_index=False).agg({'품명': 'first', 'UNIT단가': 'first', 'UNIT수량': 'sum'})
                     df_grouped['발주코드'] = df_grouped['센터'].map(CENTER_CODE_MAP).fillna(df_grouped['발주번호'])
                     df_grouped['배송코드'] = df_grouped['발주코드']
                     df_grouped['Total Amount'] = df_grouped['UNIT수량'] * df_grouped['UNIT단가']
                     
-                    df_grouped['구분'] = "0" # 구분 열 0 추가
+                    df_grouped['구분'] = "0" 
                     df_grouped['수주날짜'] = today_str
                     df_grouped['발주처'] = '롯데마트'
                     df_grouped.rename(columns={
@@ -512,7 +498,6 @@ with tab_lotte:
 
                     df_final = df_grouped[FINAL_COLUMNS].copy()
                     
-                    # --- UI 요약 섹션 ---
                     st.success("✨ 롯데마트 데이터 정제 및 병합이 완료되었습니다!")
                     c1, c2, c3 = st.columns(3)
                     c1.metric("📦 총 처리 건수", f"{len(df_final):,} 건")
@@ -520,7 +505,6 @@ with tab_lotte:
                     c3.metric("💰 총 납품 금액", f"{df_final['Total Amount'].sum():,.0f} 원")
 
                     with st.expander("👀 변환된 상세 데이터 미리보기 (약 20~30줄 표시)", expanded=True):
-                        # 표 높이를 1000px로 늘려서 더 많은 행이 한눈에 들어오게 처리!
                         st.dataframe(df_final, use_container_width=True, height=1000)
                         
                     st.download_button(
