@@ -480,21 +480,29 @@ with tab_lotte:
                         df_final['품명'] = df_final['EDI_품명']
                         df_final['UNIT단가'] = df_final['EDI_단가']
 
-                    # ⭐ 요청하신 롯데마트 특정 바코드 수동 맵핑 추가 ⭐
+                    # ⭐ 요청하신 롯데마트 특정 바코드 수동 맵핑 유지
                     LOTTE_MANUAL_MAP = {'8809020342075': 'ME90621GKK'}
                     df_final['ME코드'] = df_final['바코드'].astype(str).map(LOTTE_MANUAL_MAP).fillna(df_final['ME코드'])
 
+                    # 발주번호, 센터 등 원본을 묶어 수량 합산
                     df_grouped = df_final.groupby(['발주번호', '센터', '납품일자', 'ME코드'], as_index=False).agg({'품명': 'first', 'UNIT단가': 'first', 'UNIT수량': 'sum'})
-                    df_grouped['발주코드'] = df_grouped['센터'].map(CENTER_CODE_MAP).fillna(df_grouped['발주번호'])
-                    df_grouped['배송코드'] = df_grouped['발주코드']
-                    df_grouped['Total Amount'] = df_grouped['UNIT수량'] * df_grouped['UNIT단가']
                     
+                    # 배송코드 설정
+                    df_grouped['배송코드'] = df_grouped['센터'].map(CENTER_CODE_MAP).fillna(df_grouped['발주번호'])
+                    
+                    # 💡 요청하신 롯데마트 [발주코드 = 배송코드], [발주처 = 배송처] 로직 적용 부분 💡
+                    df_grouped['발주코드'] = df_grouped['배송코드']
+                    
+                    df_grouped['Total Amount'] = df_grouped['UNIT수량'] * df_grouped['UNIT단가']
                     df_grouped['구분'] = "0" 
                     df_grouped['수주날짜'] = today_str
-                    df_grouped['발주처'] = '롯데마트'
+                    
                     df_grouped.rename(columns={
                         '센터': '배송처', '품명': '상품명', 'UNIT수량': '수량', 'UNIT단가': '단가'
                     }, inplace=True)
+
+                    # 💡 배송처 이름으로 발주처 컬럼 통일 적용
+                    df_grouped['발주처'] = df_grouped['배송처']
 
                     df_final = df_grouped[FINAL_COLUMNS].copy()
                     
