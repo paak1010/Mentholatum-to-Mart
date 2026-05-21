@@ -114,37 +114,22 @@ st.markdown("""
 today_str = datetime.today().strftime("%Y%m%d")
 
 # ==========================================
-# 🎨 좌측 사이드바 (Sidebar) - 로고 및 안내
+# 🎨 좌측 사이드바 (Sidebar) - 로고 단독 배치
 # ==========================================
 with st.sidebar:
-    # 🎯 깃허브에 올린 'logo.png' 파일 직접 불러오기
     try:
         st.image("logo.png", use_container_width=True)
     except FileNotFoundError:
-        st.warning("⚠️ 로고 파일을 찾을 수 없습니다. 'logo.png'가 코드와 같은 폴더에 있는지 확인해주세요.")
+        pass
     
-    st.markdown("<br>", unsafe_allow_html=True)
-    st.header("💡 시스템 안내")
-    st.info("각 마트별 원본 발주서(Raw Data)를 업로드하면 표준 SCM 양식으로 자동 정제됩니다.")
-    st.markdown("---")
-    st.markdown("📌 **지원 확장자:** `.csv`, `.xls`, `.xlsx`")
-    st.markdown("⚠️ **주의사항:** 서버(깃허브)에 마스터 맵핑 파일이 정상적으로 위치해야 배송처/단가가 완벽히 적용됩니다.")
+    st.markdown("<br><br>", unsafe_allow_html=True)
     st.markdown("---")
     st.markdown(f"📅 **시스템 기준일:** `{today_str}`")
 
 # ==========================================
-# 📝 메인 화면 타이틀 (헤더 영역 분할)
+# 📝 메인 화면 타이틀 (깔끔하게 텍스트만)
 # ==========================================
-head_col1, head_col2 = st.columns([1, 15])
-with head_col1:
-    # 🎯 메인 타이틀 옆에도 동일한 로컬 로고 사용
-    try:
-        st.image("logo.png", width=65)
-    except:
-        pass
-with head_col2:
-    st.title("통합 마트 수주 자동 변환 대시보드")
-
+st.title("통합 마트 수주 자동 변환 대시보드")
 st.markdown("> **Tesco, 이마트 계열(TRD/노브랜드), 롯데마트**의 수주 데이터를 하나의 표준 양식으로 자동 병합·변환합니다.")
 st.markdown("<br>", unsafe_allow_html=True)
 
