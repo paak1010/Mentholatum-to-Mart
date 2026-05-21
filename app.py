@@ -12,66 +12,100 @@ from datetime import datetime, date
 # ==========================================
 st.set_page_config(page_title="멘소래담 통합 수주업로드", page_icon="🏢", layout="wide")
 
-# 🎨 커스텀 CSS 디자인 적용 (이 부분이 UI를 까리하게 만들어줍니다)
+# ==========================================
+# 🎨 B2B SaaS 스타일 커스텀 CSS (스트림릿 느낌 지우기)
+# ==========================================
 st.markdown("""
 <style>
+    /* 폰트 적용 (Pretendard 등 모던 폰트 룩) */
+    @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
+    html, body, [class*="css"]  {
+        font-family: 'Pretendard', sans-serif !important;
+    }
+
+    /* 스트림릿 기본 요소 숨기기 (헤더, 푸터, 햄버거 메뉴) */
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
+    
     /* 전체 배경색 지정 (아주 연한 회색으로 모던한 느낌) */
     .stApp {
-        background-color: #f4f6f9;
+        background-color: #f8fafc;
     }
     
-    /* 사이드바 배경색 및 텍스트 튜닝 */
+    /* 사이드바 배경색 및 경계선 튜닝 */
     [data-testid="stSidebar"] {
         background-color: #ffffff;
-        border-right: 1px solid #e6e9ef;
+        border-right: 1px solid #e2e8f0;
     }
     
-    /* 탭 디자인 변경 */
+    /* 탭 디자인 변경 (SaaS 스타일) */
     .stTabs [data-baseweb="tab-list"] {
-        gap: 8px;
+        gap: 10px;
+        padding-bottom: 5px;
     }
     .stTabs [data-baseweb="tab"] {
         background-color: #ffffff;
-        border-radius: 8px 8px 0 0;
-        padding: 10px 24px;
-        box-shadow: 0px -2px 5px rgba(0, 0, 0, 0.02);
-        border: 1px solid #e6e9ef;
-        border-bottom: none;
+        border-radius: 8px;
+        padding: 12px 24px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        border: 1px solid #e2e8f0;
+        font-weight: 500;
+        color: #64748b;
     }
     .stTabs [aria-selected="true"] {
-        background-color: #eef2ff;
-        border-top: 3px solid #4f46e5;
+        background-color: #f0fdf4;
+        border: 1px solid #22c55e;
         font-weight: 700;
-        color: #4f46e5;
+        color: #15803d;
+        box-shadow: 0 2px 4px rgba(34, 197, 94, 0.1);
     }
     
     /* 메트릭 카드(통계 요약) 디자인 */
     div[data-testid="metric-container"] {
         background-color: #ffffff;
-        border: 1px solid #e6e9ef;
-        padding: 15px 20px;
+        border: 1px solid #e2e8f0;
+        padding: 20px;
         border-radius: 12px;
-        box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.04);
-        transition: transform 0.2s ease;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
     }
     div[data-testid="metric-container"]:hover {
         transform: translateY(-2px);
-        box-shadow: 0px 6px 12px rgba(0, 0, 0, 0.08);
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
     }
     
-    /* 다운로드 버튼 스타일링 */
+    /* 다운로드 버튼 스타일링 (그라데이션 & 강조) */
     .stDownloadButton button {
         width: 100%;
         border-radius: 8px;
-        font-weight: 600;
+        font-weight: 700;
         letter-spacing: 0.5px;
+        background: linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%);
+        color: white;
+        border: none;
+        padding: 12px 0;
+        box-shadow: 0 4px 6px rgba(59, 130, 246, 0.25);
+        transition: all 0.3s ease;
+    }
+    .stDownloadButton button:hover {
+        background: linear-gradient(135deg, #4338ca 0%, #2563eb 100%);
+        box-shadow: 0 6px 8px rgba(59, 130, 246, 0.35);
+        transform: translateY(-1px);
+        color: white;
     }
     
-    /* 업로더 디자인 개선 */
+    /* 파일 업로더 디자인 개선 */
     [data-testid="stFileUploadDropzone"] {
         border-radius: 12px;
-        border: 2px dashed #a5b4fc;
+        border: 2px dashed #94a3b8;
         background-color: #ffffff;
+        padding: 30px;
+        transition: all 0.2s ease;
+    }
+    [data-testid="stFileUploadDropzone"]:hover {
+        border-color: #3b82f6;
+        background-color: #f0f9ff;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -83,8 +117,11 @@ today_str = datetime.today().strftime("%Y%m%d")
 # 🎨 좌측 사이드바 (Sidebar) - 로고 및 안내
 # ==========================================
 with st.sidebar:
-    # 💡 팁: 로컬에 'logo.png' 파일이 있다면 st.image("logo.png") 로 변경하세요!
-    st.image("https://static.wikia.nocookie.net/mycompanies/images/d/de/Fe328a0f-a347-42a0-bd70-254853f35374.jpg/revision/latest?cb=20191117172510", use_container_width=True)
+    # 🎯 깃허브에 올린 'logo.png' 파일 직접 불러오기
+    try:
+        st.image("logo.png", use_container_width=True)
+    except FileNotFoundError:
+        st.warning("⚠️ 로고 파일을 찾을 수 없습니다. 'logo.png'가 코드와 같은 폴더에 있는지 확인해주세요.")
     
     st.markdown("<br>", unsafe_allow_html=True)
     st.header("💡 시스템 안내")
@@ -98,11 +135,13 @@ with st.sidebar:
 # ==========================================
 # 📝 메인 화면 타이틀 (헤더 영역 분할)
 # ==========================================
-# 레이아웃을 나누어 왼쪽엔 로고 아이콘, 오른쪽엔 타이틀을 배치해 엔터프라이즈 느낌을 줍니다.
 head_col1, head_col2 = st.columns([1, 15])
 with head_col1:
-    # 타이틀 옆 작은 포인트 로고 (사내 실제 로고 URL이나 파일 경로로 변경 가능)
-    st.image("https://cdn-icons-png.flaticon.com/512/2881/2881142.png", width=60)
+    # 🎯 메인 타이틀 옆에도 동일한 로컬 로고 사용
+    try:
+        st.image("logo.png", width=65)
+    except:
+        pass
 with head_col2:
     st.title("통합 마트 수주 자동 변환 대시보드")
 
@@ -130,7 +169,7 @@ def to_excel_unified(df, sheet_name="통합_수주업로드"):
         
         num_format = workbook.add_format({'num_format': '#,##0'})
         center_format = workbook.add_format({'align': 'center'})
-        header_format = workbook.add_format({'bold': True, 'bg_color': '#4f46e5', 'font_color': 'white', 'border': 1, 'align': 'center'})
+        header_format = workbook.add_format({'bold': True, 'bg_color': '#1e293b', 'font_color': 'white', 'border': 1, 'align': 'center'})
         
         for col_num, value in enumerate(df.columns.values):
             worksheet.write(0, col_num, value, header_format)
@@ -147,7 +186,7 @@ def to_excel_unified(df, sheet_name="통합_수주업로드"):
     return output.getvalue()
 
 # ==========================================
-# 🗂️ 대시보드 탭 디자인 적용
+# 🗂️ 대시보드 탭 분리
 # ==========================================
 tab_tesco, tab_emart, tab_lotte = st.tabs(["🔴 Tesco", "🟡 이마트 (TRD/노브랜드 포함)", "🟢 롯데마트"])
 
@@ -302,14 +341,13 @@ with tab_tesco:
                 c3.metric("💰 총 납품 금액", f"{df_final['Total Amount'].sum():,.0f} 원")
 
                 with st.expander("👀 변환된 상세 데이터 미리보기 (약 20~30줄 표시)", expanded=True):
-                    st.dataframe(df_final, use_container_width=True, height=1000)
+                    st.dataframe(df_final, use_container_width=True, height=500)
                 
                 st.download_button(
                     label="📥 통일 양식 다운로드 (Tesco)", 
                     data=to_excel_unified(df_final), 
                     file_name=f"수주통합본_Tesco_{today_str}.xlsx", 
                     mime="application/vnd.ms-excel", key="dl_tesco",
-                    type="primary"
                 )
         except Exception as e:
             st.error(f"오류 발생: {e}")
@@ -451,14 +489,13 @@ with tab_emart:
                     c3.metric("💰 총 납품 금액", f"{df_final['Total Amount'].sum():,.0f} 원")
 
                     with st.expander("👀 변환된 상세 데이터 미리보기 (약 20~30줄 표시)", expanded=True):
-                        st.dataframe(df_final, use_container_width=True, height=1000)
+                        st.dataframe(df_final, use_container_width=True, height=500)
                         
                     st.download_button(
                         label="📥 통일 양식 다운로드 (이마트)", 
                         data=to_excel_unified(df_final), 
                         file_name=f"수주통합본_Emart_{today_str}.xlsx", 
                         mime="application/vnd.ms-excel", key="dl_emart",
-                        type="primary"
                     )
             except Exception as e:
                 st.error(f"오류 발생: {e}")
@@ -585,14 +622,13 @@ with tab_lotte:
                     c3.metric("💰 총 납품 금액", f"{df_final['Total Amount'].sum():,.0f} 원")
 
                     with st.expander("👀 변환된 상세 데이터 미리보기 (약 20~30줄 표시)", expanded=True):
-                        st.dataframe(df_final, use_container_width=True, height=1000)
+                        st.dataframe(df_final, use_container_width=True, height=500)
                         
                     st.download_button(
                         label="📥 통일 양식 다운로드 (롯데마트)", 
                         data=to_excel_unified(df_final), 
                         file_name=f"수주통합본_Lotte_{today_str}.xlsx", 
                         mime="application/vnd.ms-excel", key="dl_lotte",
-                        type="primary"
                     )
         except Exception as e:
             st.error(f"오류 발생: {e}")
