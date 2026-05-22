@@ -575,7 +575,7 @@ with tab_lotte:
                         df_final['UNIT단가'] = df_final['EDI_단가']
 
                     # ⭐ 요청하신 롯데마트 특정 바코드 수동 맵핑 유지
-                    LOTTE_MANUAL_MAP = {'8809020342075': 'ME90621GKK', '8809020342105' : 'ME90621LL5' }
+                    LOTTE_MANUAL_MAP = {'8809020342075': 'ME90621GKK', '8809020342105' : 'ME90621LL5', '8809020345229' : 'ME00421301' }
                     df_final['ME코드'] = df_final['바코드'].astype(str).map(LOTTE_MANUAL_MAP).fillna(df_final['ME코드'])
 
                     # 발주번호, 센터 등 원본을 묶어 수량 합산
