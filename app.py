@@ -219,7 +219,9 @@ if uploaded_file:
         except Exception as e:
             progress_bar.empty()
             status_text.empty()
-            st.error(f"❌ 데이터 변환 중 오류가 발생했습니다: {str(e)}")import streamlit as st
+            st.error(f"❌ 데이터 변환 중 오류가 발생했습니다: {str(e)}")
+
+]import streamlit as st
 import pandas as pd
 import numpy as np
 import io
